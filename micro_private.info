@@ -1,0 +1,13 @@
+; $Id$ micro_private.info, v 1.0 2010/12/01 04:20:00 blup Exp $
+
+name = Micro private
+description = Provides new privacy settings for micro types.
+version = 7.x-1.0
+core = 7.x
+
+files[] = micro_private.module
+files[] = micro_private.install
+
+dependencies[] = micro
+
+; configure = admin/config/micro-publisher/settings/node

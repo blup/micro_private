@@ -1,0 +1,104 @@
+<?php
+// $Id$ micro_private.module, v 1.0 2010/12/01 04:20:00 blup Exp $
+
+/**
+ * @file
+ * Micro privacy settings
+ */
+
+/**
+ * Implements hook_permission()
+ */
+function micro_private_permission() {
+  $permissions = array(
+   'view private micro items attached to own content' => array(
+      'title' => t('View private micro items'),
+      'description' => t('View private micro items attached to own content.'),
+    ),
+    'view any private micro item' => array(
+      'title' => t('View any private micro item'),
+      'description' => t('View any private micro item.'),
+    ),
+  );
+  /*
+   *foreach (micro_type_get_types() as $type) {
+   *  $type_name = check_plain($type->machine_name);
+   *  if (isset($type->data['private']) && $type->data['private'] == '1') {
+   *    $permissions += array(
+   *      "view own $type_name micro items" => array(
+   *        'title' => t('%type_name: View own private items', array('%type_name' => $type->name)),
+   *      ),
+   *    );
+   *  }
+   *}
+   */
+  return $permissions;
+}
+
+/**
+ * Implements hook_micro_access().
+ */
+function micro_private_micro_access($micro, $op, $account) {
+  // Ignore authors and operations other than 'view'
+  if ($op == 'view' && $account->uid != $micro->uid) {
+    $micro_type = micro_type_get_type($micro);
+    // If viewing and the micro item is private, load the entity
+    if (isset($micro_type->data['private']) && $micro_type->data['private'] == '1') {
+      if (user_access('view any private micro items', $account)) {
+        return MICRO_ACCESS_ALLOW;
+      }
+      else {
+        switch ($micro_type->entity) {
+          case 'micro':
+            $entity = micro_load($micro->eid);
+            break;
+          case 'node':
+            $entity = node_load($micro->eid);
+            break;
+          case 'user':
+              $entity = user_load($micro->eid);
+              break;
+            case 'comment':
+              $entity = comment_load($micro->eid);
+              break;
+        }
+        // Allow if user viewing is the author of the entity it's attached to, and he has permission.
+        if (isset($entity) && $account->uid == $entity->uid && user_access('view private micro items attached to own content', $account)) {
+          return MICRO_ACCESS_ALLOW;
+        }
+        // Deny otherwise
+        else {
+          return MICRO_ACCESS_DENY;
+        }
+      }
+    }
+  }
+  return MICRO_ACCESS_IGNORE;
+}
+
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ *
+ * Adds the privacy settings tab
+ */
+function micro_private_form_micro_type_form_alter(&$form, &$form_state, $form_id) {
+  /*
+   *$micro = $form['#micro'];
+   *dsm($form_state);
+   */
+  $form['workflow']['private'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Private'),
+    '#description' => t('Whether items are private or not.'),
+    '#options' => array('0' => FALSE, '1' => TRUE),
+    '#default_value' => isset($type->data['private']) ? $type->data['private'] : FALSE,
+  );
+}
+
+/**
+ * Implements hook_micro_data_alter().
+ */
+function micro_private_micro_data_alter(&$data, &$form_state) {
+  $data['private'] = $form_state['values']['private'];
+}
